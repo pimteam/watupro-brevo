@@ -77,7 +77,7 @@ class WatuPROBrevoBridge {
                 $_list = $apiInstance->getLists($limit, $offset);
                 //print_r($result);
                 $lists = $_list->getLists();
-                print_r($lists);
+                //print_r($lists);
             } catch (Exception $e) {
                 echo 'Exception when calling ContactsApi->getFolderLists: ', $e->getMessage(), PHP_EOL;
             }
