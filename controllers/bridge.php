@@ -17,25 +17,25 @@ class WatuPROBrevoBridge {
    	  $exams = $wpdb->get_results("SELECT * FROM ".WATUPRO_EXAMS." ORDER BY name");
    	  
    	  // add/edit/delete relation
-   	  if(!empty($_POST['add']) and check_admin_referer('watupronta_rule')) {
+   	  if(!empty($_POST['add']) and check_admin_referer('watuprobrevo_rule')) {
 				// no duplicates		
 				$exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM ".WATUPROBRE_RELATIONS."
-					WHERE exam_id=%d AND campaign_id=%s AND grade_id=%d", $_POST['exam_id'], $_POST['campaign_id'], $_POST['grade_id']));   	  	
+					WHERE exam_id=%d AND list_id=%d AND grade_id=%d", intval($_POST['exam_id']), intval($_POST['list_id']), intval($_POST['grade_id'])));   	  	
    	  	
    	  	if(!$exists) {
 					$wpdb->query($wpdb->prepare("INSERT INTO ".WATUPROBRE_RELATIONS." SET 
-						exam_id = %d, campaign_id=%s, grade_id=%d", $_POST['exam_id'], $_POST['campaign_id'], $_POST['grade_id']));
+						exam_id = %d, list_id=%s, grade_id=%d", intval($_POST['exam_id']), intval($_POST['list_id']), intval($_POST['grade_id'])));
 					}   	  
    	  }
    
-   		if(!empty($_POST['save']) and check_admin_referer('watupronta_rule')) {
+   		if(!empty($_POST['save']) and check_admin_referer('watuprobrevo_rule')) {
 				$wpdb->query($wpdb->prepare("UPDATE ".WATUPROBRE_RELATIONS." SET 
-					exam_id = %d, campaign_id=%s, grade_id=%d WHERE id=%d", 
-					$_POST['exam_id'], $_POST['campaign_id'], $_POST['grade_id'], $_POST['id']));   	  
+					exam_id = %d, list_id=%d, grade_id=%d WHERE id=%d", 
+					intval($_POST['exam_id']), intval($_POST['list_id']), intval($_POST['grade_id']), intval($_POST['id'])));   	  
    	  }
    	  
-			if(!empty($_POST['del']) and check_admin_referer('watupronta_rule')) {
-				$wpdb->query($wpdb->prepare("DELETE FROM ".WATUPROBRE_RELATIONS." WHERE id=%d", $_POST['id']));
+			if(!empty($_POST['del']) and check_admin_referer('watuprobrevo_rule')) {
+				$wpdb->query($wpdb->prepare("DELETE FROM ".WATUPROBRE_RELATIONS." WHERE id=%d", intval($_POST['id'])));
 			}   	  
    	  
    	  // select existing relations
@@ -89,7 +89,7 @@ class WatuPROBrevoBridge {
 	 // actually subscribe the user
 	 static function complete_exam($taking_id) {
 	 	  global $wpdb;
-
+  
 	 	  // select taking		
 	 	  $taking = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".WATUPRO_TAKEN_EXAMS." 	
 	 	  	WHERE ID=%d", $taking_id));
@@ -101,6 +101,7 @@ class WatuPROBrevoBridge {
 	 	  $relations = $wpdb->get_results($wpdb->prepare("SELECT * FROM ".WATUPROBRE_RELATIONS." 
 		 	  WHERE exam_id=%d", $taking->exam_id));
 		 	  
+         
 		 	if(!count($relations)) return false;  
 		 	 //echo "HERE BRIDGE 2";
 	
@@ -118,65 +119,59 @@ class WatuPROBrevoBridge {
 			// break first & last			
 			$parts = explode(" ", $name);
 			$fname = $parts[0];
-			$lname = @$parts[1];
+			$lname = $parts[1] ?? '';
 	      
 	      // add to Ontaport
-	      $api_key = get_option('watupronta_api_key');
-   	   $app_id = get_option('watupronta_app_id');
-	   	   	
+	      $api_key = get_option('watuprobrevo_api_key');
+   	   	   	   	
 	   	$double_optin = (get_option('watuproget_no_optin') == '1') ? false : true;
 	   	
-	   	// use OntraportAPI\Ontraport;
-
-         $client = new OntraportAPI\Ontraport($app_id, $api_key);    
-         
-         //print_r($client);
+	   $config = SendinBlue\Client\Configuration::getDefaultConfiguration()->setApiKey('api-key', $api_key);
+	   $apiInstance = new SendinBlue\Client\Api\ContactsApi(
+                    new GuzzleHttp\Client(),
+                    $config
+                );
 	   	
 	   	// select mailing lists from getresponse
 	   	foreach($relations as $relation) {
 			   // check grade
-				if(!empty($relation->grade_id) and $relation->grade_id != $taking->grade_id) continue;
+				if(!empty($relation->grade_id) and $relation->grade_id != $taking->grade_id) continue;		
 				
-				// check if email exists
-				$requestParams = array(
-			        "objectID" => 0, // Contact object
-			        "email"    => $email
-			    );
-			    $response = $client->object()->retrieveIdByEmail($requestParams);
-			    $response = json_decode($response);
-			    if(empty($response->data->id)) {
-			    	 $requestParams = array(
-			        "firstname" => $fname,
-			        "lastname"  => $lname,
-			        "email"     => $email
-				    );
-				    $response = $client->contact()->create($requestParams);
-				    
-				    // get ID and add to campaign
-				    $user = json_decode($response);
-				    $user_id = $user->data->id;
-			    }
-				 else $user_id = $response->data->id;
-	
-			    // add to campaign
-			    $requestParams = array(
-			        "objectID" => $user_id, // Contact object
-			        "ids"      => $user_id,
-			        "add_list" => $relation->campaign_id,
-			        "sub_type" => "Campaign"
-			    );
-			    $response = $client->object()->subscribe($requestParams);
+				// create the contact if it does not exist
+				try {                    
+                    $result = $apiInstance->getContactInfo($email);                    
+                } catch (Exception $e) {}
 				
+				if(empty($result) or !is_object($result)) {
+                    $createContact = new \SendinBlue\Client\Model\CreateContact(); // Values to create a contact
+                    $createContact['email'] = $email;
+                    $createContact['attributes'] = [
+                        'FIRSTNAME' => $fname,
+                        'LASTNAME' => $lname,
+                    ];
+                    $createContact['listIds'] = [intval($relation->list_id)];
+                    
+                    try {
+                        $result = $apiInstance->createContact($createContact);
+                    // print_r($result);
+                    } catch (Exception $e) {
+                            print_r($e);
+                        echo 'Exception when calling ContactsApi->createContact: ', $e->getMessage(), PHP_EOL;
+                        return;
+                    }
+				}
+                
+				// now add the contact
+				$contactIdentifiers = new \SendinBlue\Client\Model\AddContactToList();
+                $contactIdentifiers['emails'] = [$email];
+                
+                try {
+                    $result = $apiInstance->addContactToList(intval($relation->list_id), $contactIdentifiers);
+                    //print_r($result);
+                } catch (Exception $e) {
+                    
+                }
 			} // end foreach relation	
    } // end complete exam
    
-   // get API endpoint URL based on settings
-   static function get_url() {
-   	 $is_360 = get_option('watuproget_is_360');
-  	 
-   	 if(!$is_360) return 'https://api.getresponse.com/v3';
-   	 
-   	 // else 
-   	 return get_option('watuproget_type'); 
-   }
 }

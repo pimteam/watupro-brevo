@@ -51,7 +51,7 @@
 				</span>				
 				 			
 	 			<?php printf(__('subscribe them to mailing list','watuprobrevo'), '');?> 
-	 			<select name="campaign_id">
+	 			<select name="list_id">
 	 				<option value=""><?php _e('- Select list -');?></option>
 	 				<?php foreach($lists as $l):?>
 	 					<option value="<?php echo $l['id']?>"><?php echo stripslashes($l['name'])?></option>
@@ -89,7 +89,7 @@
 				</span>			
 					 			
 	 			<?php _e('subscribe them to mailing list','watuprobrevo')?> 
-	 			<select name="campaign_id">
+	 			<select name="list_id">
 	 				<option value=""><?php _e('- Select list -');?></option>
 	 				<?php foreach($lists as $l):
 	 					$selected = ($l['id'] == $relation->list_id) ? 'selected' : '';?>

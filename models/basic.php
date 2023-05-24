@@ -13,7 +13,7 @@ class WatuPROBrevo {
                 $sql = "CREATE TABLE `".WATUPROBRE_RELATIONS."` (
                         id mediumint unsigned NOT NULL auto_increment PRIMARY KEY,
                         exam_id int(11) unsigned NOT NULL default '0',
-                        list_id VARCHAR(100) NOT NULL DEFAULT '',
+                        list_id mediumint NOT NULL DEFAULT 0,
                         grade_id int(11) unsigned NOT NULL default '0'
                     ) CHARACTER SET utf8;";
                 $wpdb->query($sql);             	
@@ -23,7 +23,7 @@ class WatuPROBrevo {
    // main menu
    static function menu() {
         add_submenu_page('watupro_exams', __('Bridge to Brevo/SendInBlue', 'watuprobrevo'), __('Bridge to Brevo/SendInBlue', 'watuprobrevo'), 'manage_options', 
-   		'watupronta', array('WatuPROBrevoBridge','main'));	
+   		'watuprobrevo', array('WatuPROBrevoBridge','main'));	
 	}
 	
 	// CSS and JS

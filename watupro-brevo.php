@@ -15,9 +15,9 @@ define( 'WATUPROBRE_RELATIVE_PATH', dirname( plugin_basename( __FILE__ )));
 define( 'WATUPROBRE_URL', plugin_dir_url( __FILE__ ));
 
 // require controllers and models
+require_once(WATUPROBRE_PATH . '/vendor/autoload.php');
 require_once(WATUPROBRE_PATH.'/models/basic.php');
 require_once(WATUPROBRE_PATH.'/controllers/bridge.php');
-require_once(WATUPROBRE_PATH . '/vendor/autoload.php');
 
 add_action('init', array("WatuPROBrevo", "init"));
 
