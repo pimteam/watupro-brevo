@@ -1,18 +1,17 @@
 <?php
-class WatuPROntaBridge {
+class WatuPROBrevoBridge {
    static function main() {
    	  global $wpdb;
    	  
    	  // save Ontaport API Key and APP ID
-   	  if(!empty($_POST['set_key']) and check_admin_referer('watupronta_settings')) {
-			  $double_optin = empty($_POST['no_optin']) ? 0 : 1;   	 
+   	  if(!empty($_POST['set_key']) and check_admin_referer('watuprobrevo_settings')) {
+		 $double_optin = empty($_POST['no_optin']) ? 0 : 1;   	 
 			
-   	  	  update_option('watupronta_api_key', sanitize_text_field($_POST['api_key']));
-   	  	  update_option('watupronta_app_id', sanitize_text_field($_POST['app_id']));
+   	  	  update_option('watuprobrevo_api_key', sanitize_text_field($_POST['api_key']));
+   	  	  
    	  }
    	  
-   	  $api_key = get_option('watupronta_api_key');
-   	  $app_id = get_option('watupronta_app_id');
+   	  $api_key = get_option('watuprobrevo_api_key');   	  
    	
    	  // select exams
    	  $exams = $wpdb->get_results("SELECT * FROM ".WATUPRO_EXAMS." ORDER BY name");
@@ -20,27 +19,27 @@ class WatuPROntaBridge {
    	  // add/edit/delete relation
    	  if(!empty($_POST['add']) and check_admin_referer('watupronta_rule')) {
 				// no duplicates		
-				$exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM ".WATUPRONTA_RELATIONS."
+				$exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM ".WATUPROBRE_RELATIONS."
 					WHERE exam_id=%d AND campaign_id=%s AND grade_id=%d", $_POST['exam_id'], $_POST['campaign_id'], $_POST['grade_id']));   	  	
    	  	
    	  	if(!$exists) {
-					$wpdb->query($wpdb->prepare("INSERT INTO ".WATUPRONTA_RELATIONS." SET 
+					$wpdb->query($wpdb->prepare("INSERT INTO ".WATUPROBRE_RELATIONS." SET 
 						exam_id = %d, campaign_id=%s, grade_id=%d", $_POST['exam_id'], $_POST['campaign_id'], $_POST['grade_id']));
 					}   	  
    	  }
    
    		if(!empty($_POST['save']) and check_admin_referer('watupronta_rule')) {
-				$wpdb->query($wpdb->prepare("UPDATE ".WATUPRONTA_RELATIONS." SET 
+				$wpdb->query($wpdb->prepare("UPDATE ".WATUPROBRE_RELATIONS." SET 
 					exam_id = %d, campaign_id=%s, grade_id=%d WHERE id=%d", 
 					$_POST['exam_id'], $_POST['campaign_id'], $_POST['grade_id'], $_POST['id']));   	  
    	  }
    	  
 			if(!empty($_POST['del']) and check_admin_referer('watupronta_rule')) {
-				$wpdb->query($wpdb->prepare("DELETE FROM ".WATUPRONTA_RELATIONS." WHERE id=%d", $_POST['id']));
+				$wpdb->query($wpdb->prepare("DELETE FROM ".WATUPROBRE_RELATIONS." WHERE id=%d", $_POST['id']));
 			}   	  
    	  
    	  // select existing relations
-   	  $relations = $wpdb->get_results("SELECT * FROM ".WATUPRONTA_RELATIONS." ORDER BY id");
+   	  $relations = $wpdb->get_results("SELECT * FROM ".WATUPROBRE_RELATIONS." ORDER BY id");
    	  
    	  // select all non-category grades and match them to exams and relations
    	  $grades = $wpdb->get_results("SELECT * FROM ".WATUPRO_GRADES." WHERE cat_id=0 ORDER BY gtitle");
@@ -63,21 +62,28 @@ class WatuPROntaBridge {
 			  $relations[$cnt]->grades = $rel_grades;
    	  }
    	     	  
-   	     	  
-   	  // get campaigns
-		 // use OntraportAPI\Ontraport;
+   	   if(!empty($api_key)) {
+            // get lists
+            $config = SendinBlue\Client\Configuration::getDefaultConfiguration()->setApiKey('api-key', $api_key);
 
-	    $client = new OntraportAPI\Ontraport($app_id, $api_key);    
-	    $requestParams = array(
-	        "listFields" => "id,name"
-	    );
-	    $response = $client->campaignbuilder()->retrieveMultiple($requestParams);   	 
-				    
-	    $response = json_decode($response);
-	    //print_r($response);
-	    $campaigns = $response->data;
-	    	     	  
-		 include(WATUPRONTA_PATH."/views/main.html.php");
+            $apiInstance = new SendinBlue\Client\Api\ContactsApi(
+                new GuzzleHttp\Client(),
+                $config
+            );
+            $limit = 10;
+            $offset = 0;
+
+            try {
+                $_list = $apiInstance->getLists($limit, $offset);
+                //print_r($result);
+                $lists = $_list->getLists();
+                print_r($lists);
+            } catch (Exception $e) {
+                echo 'Exception when calling ContactsApi->getFolderLists: ', $e->getMessage(), PHP_EOL;
+            }
+   	   }   	  
+        
+       include(WATUPROBRE_PATH."/views/main.html.php");
    }
 
 	 // actually subscribe the user
@@ -92,7 +98,7 @@ class WatuPROntaBridge {
 			if(empty($taking->user_id) and empty($taking->email)) return false;
 			
 	 	  // see if there are any relations for this exam ID
-	 	  $relations = $wpdb->get_results($wpdb->prepare("SELECT * FROM ".WATUPRONTA_RELATIONS." 
+	 	  $relations = $wpdb->get_results($wpdb->prepare("SELECT * FROM ".WATUPROBRE_RELATIONS." 
 		 	  WHERE exam_id=%d", $taking->exam_id));
 		 	  
 		 	if(!count($relations)) return false;  
