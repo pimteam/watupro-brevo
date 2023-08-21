@@ -4,7 +4,7 @@ Plugin Name: WatuPRO to Brevo / SendInBlue Bridge
 Plugin URI: 
 Description: Automatically subscribe users who take quizzes to Brevo
 Author: Kiboko Labs
-Version: 0.1
+Version: 0.2
 Author URI: http://calendarscripts.info/
 License: GPLv2 or later
 Text-domain: watuprobrevo

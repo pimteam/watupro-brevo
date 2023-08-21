@@ -70,7 +70,7 @@ class WatuPROBrevoBridge {
                 new GuzzleHttp\Client(),
                 $config
             );
-            $limit = 10;
+            $limit = 1000;
             $offset = 0;
 
             try {
